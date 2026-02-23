@@ -1,0 +1,71 @@
+2362. Generate the Invoice
+2362. Generate the Invoice
+Table: Products
+Column Name	Type
+product_id	int
+price	int
+
+product_id is the primary key of this table.
+
+Each row contains information about a product and its price.
+
+Table: Purchases
+Column Name	Type
+invoice_id	int
+product_id	int
+quantity	int
+
+There is no primary key for this table.
+
+Each row represents that a given product_id was purchased in quantity on invoice_id.
+
+Task
+
+Write an SQL query to generate the invoice.
+
+For each invoice_id, report:
+
+invoice_id
+
+total_price — sum of (quantity × price) of all products in the invoice
+
+Ordering
+
+Return the result table ordered by:
+
+total_price in descending order
+
+invoice_id in ascending order
+
+Example
+Input
+
+Products
+
+product_id	price
+1	10
+2	20
+3	30
+
+Purchases
+
+invoice_id	product_id	quantity
+1	1	2
+1	2	3
+2	3	1
+2	1	4
+Output
+invoice_id	total_price
+2	70
+1	80
+
+Solution
+==========
+SELECT
+  pu.invoice_id,
+  SUM(pu.quantity * pr.price) AS total_price
+FROM Purchases pu
+JOIN Products pr
+  ON pu.product_id = pr.product_id
+GROUP BY pu.invoice_id
+ORDER BY total_price DESC, pu.invoice_id ASC;
