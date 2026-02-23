@@ -1,0 +1,102 @@
+2494. Merge Overlapping Events in the Same Hall
+Table: HallEvents
+Column Name	Type
+hall_id	int
+start_day	date
+end_day	date
+
+There is no primary key for this table.
+
+Each row represents an event that takes place in a hall from start_day to end_day (inclusive).
+
+Events in different halls are independent.
+
+Definition
+
+Two events in the same hall are considered overlapping if:
+
+The start_day of one event is less than or equal to
+the end_day of the other event.
+
+Overlapping events should be merged into a single event that covers the full time span.
+
+Task
+
+Write an SQL query to merge all overlapping events in the same hall.
+
+For each merged event, report:
+
+hall_id
+
+start_day — the earliest start day of the merged interval
+
+end_day — the latest end day of the merged interval
+
+Rules
+
+Only events in the same hall can be merged.
+
+The merged events should be non-overlapping and sorted by start_day within each hall.
+
+Return the result table in any order.
+
+Example
+Input
+
+HallEvents
+
+hall_id	start_day	end_day
+1	2022-01-01	2022-01-05
+1	2022-01-04	2022-01-08
+1	2022-01-10	2022-01-12
+2	2022-01-03	2022-01-06
+2	2022-01-05	2022-01-07
+Output
+hall_id	start_day	end_day
+1	2022-01-01	2022-01-08
+1	2022-01-10	2022-01-12
+2	2022-01-03	2022-01-07
+
+Solution
+---------
+WITH ordered AS (
+  SELECT
+    hall_id,
+    start_day,
+    end_day,
+    -- running maximum of end_day up to the previous row (per hall)
+    MAX(end_day) OVER (
+      PARTITION BY hall_id
+      ORDER BY start_day, end_day
+      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+    ) AS prev_max_end
+  FROM HallEvents
+),
+flagged AS (
+  SELECT
+    hall_id,
+    start_day,
+    end_day,
+    -- start a new group when this event starts AFTER the previous group's max end
+    CASE WHEN prev_max_end IS NULL OR start_day > prev_max_end THEN 1 ELSE 0 END AS is_new_group
+  FROM ordered
+),
+grps AS (
+  SELECT
+    hall_id,
+    start_day,
+    end_day,
+    -- cumulative sum of is_new_group gives a group id per hall
+    SUM(is_new_group) OVER (PARTITION BY hall_id ORDER BY start_day, end_day
+                            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS grp
+  FROM flagged
+)
+SELECT
+  hall_id,
+  MIN(start_day) AS start_day,
+  MAX(end_day)   AS end_day
+FROM grps
+GROUP BY hall_id, grp
+ORDER BY hall_id, start_day;
+
+
