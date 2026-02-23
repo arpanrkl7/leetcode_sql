@@ -1,0 +1,107 @@
+2153. The Number of Passengers in Each Bus II
+2153. The Number of Passengers in Each Bus II
+Table: Buses
+Column Name	Type
+bus_id	int
+arrival_time	int
+
+bus_id is the primary key of this table.
+
+Each row contains information about a bus.
+
+arrival_time represents the arrival time of the bus.
+
+Table: Passengers
+Column Name	Type
+passenger_id	int
+arrival_time	int
+
+passenger_id is the primary key of this table.
+
+Each row contains information about a passenger.
+
+arrival_time represents the arrival time of the passenger.
+
+Rules
+
+Passengers board the earliest bus whose arrival_time is greater than or equal to the passenger’s arrival_time.
+
+Each passenger can board only one bus.
+
+If no bus arrives after a passenger arrives, the passenger does not board any bus.
+
+Task
+
+Write an SQL query to report the number of passengers that boarded each bus.
+
+Return the result table ordered by bus_id in ascending order.
+
+Example
+Input
+
+Buses
+
+bus_id	arrival_time
+1	2
+2	4
+3	7
+
+Passengers
+
+passenger_id	arrival_time
+11	1
+12	2
+13	3
+14	6
+15	7
+Output
+bus_id	passengers_cnt
+1	2
+2	1
+3	2
+
+Solution 1
+=========
+WITH candidate AS (
+  SELECT
+    p.passenger_id,
+    b.bus_id,
+    ROW_NUMBER() OVER (PARTITION BY p.passenger_id ORDER BY b.arrival_time) AS rn
+  FROM Passengers p
+  JOIN Buses b
+    ON b.arrival_time >= p.arrival_time
+)
+, assigned AS (
+  -- pick the earliest bus per passenger
+  SELECT passenger_id, bus_id
+  FROM candidate
+  WHERE rn = 1
+)
+SELECT
+  b.bus_id,
+  COUNT(a.passenger_id) AS passengers_cnt
+FROM Buses b
+LEFT JOIN assigned a
+  ON b.bus_id = a.bus_id
+GROUP BY b.bus_id
+ORDER BY b.bus_id;
+
+
+Solution 2
+=========
+WITH bus_windows AS (
+  SELECT
+    bus_id,
+    arrival_time,
+    LAG(arrival_time) OVER (ORDER BY arrival_time) AS prev_time
+  FROM Buses
+)
+SELECT
+  b.bus_id,
+  COUNT(p.passenger_id) AS passengers_cnt
+FROM bus_windows b
+LEFT JOIN Passengers p
+  ON p.arrival_time <= b.arrival_time
+ AND (b.prev_time IS NULL OR p.arrival_time > b.prev_time)
+GROUP BY b.bus_id
+ORDER BY b.bus_id;
