@@ -1,0 +1,128 @@
+2173. Longest Winning Streak
+Table: Matches
+Column Name	Type
+player_id	int
+match_day	date
+result	enum
+
+There is no primary key for this table.
+
+Each row represents the result of a match played by a player on a given day.
+
+result is an enum with values:
+
+'Win'
+
+'Lose'
+
+'Draw'
+
+Definition
+
+A winning streak for a player is a sequence of consecutive matches where the player’s result is 'Win'.
+
+A streak is broken by either 'Lose' or 'Draw'.
+
+Matches are considered consecutive based on increasing match_day.
+
+Task
+
+Write an SQL query to report the longest winning streak for each player.
+
+The longest winning streak is the maximum number of consecutive wins the player has achieved.
+
+If a player has no wins, their longest winning streak is 0.
+
+Output Format
+
+Return a table with the following columns:
+
+player_id	longest_streak
+int	int
+
+Return the result table in any order.
+
+Example
+Input
+
+Matches
+
+player_id	match_day	result
+1	2021-01-01	Win
+1	2021-01-02	Win
+1	2021-01-03	Lose
+1	2021-01-04	Win
+2	2021-01-01	Lose
+2	2021-01-02	Draw
+2	2021-01-03	Win
+2	2021-01-04	Win
+2	2021-01-05	Win
+Output
+player_id	longest_streak
+1	2
+2	3
+
+Solution 1
+===========
+WITH x AS (
+  SELECT
+    player_id,
+    match_day,
+    result,
+    CASE
+      WHEN result = 'Win'
+       AND (LAG(result) OVER (PARTITION BY player_id ORDER BY match_day) <> 'Win'
+            OR LAG(result) OVER (PARTITION BY player_id ORDER BY match_day) IS NULL)
+      THEN 1 ELSE 0
+    END AS is_new_streak
+  FROM Matches
+),
+g AS (
+  SELECT
+    player_id,
+    match_day,
+    result,
+    SUM(is_new_streak) OVER (PARTITION BY player_id ORDER BY match_day) AS grp
+  FROM x
+)
+SELECT
+  player_id,
+  COALESCE(MAX(streak_len), 0) AS longest_streak
+FROM (
+  SELECT player_id, grp, COUNT(*) AS streak_len
+  FROM g
+  WHERE result = 'Win'
+  GROUP BY player_id, grp
+) s
+GROUP BY player_id;
+
+
+Solution2
+=========
+WITH a AS (
+  SELECT
+    player_id,
+    match_day,
+    result,
+    ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY match_day) AS rn_all,
+    CASE WHEN result = 'Win'
+         THEN ROW_NUMBER() OVER (PARTITION BY player_id, result ORDER BY match_day)
+    END AS rn_win
+  FROM Matches
+),
+wins AS (
+  SELECT
+    player_id,
+    (rn_all - rn_win) AS grp
+  FROM a
+  WHERE result = 'Win'
+)
+SELECT
+  player_id,
+  MAX(cnt) AS longest_streak
+FROM (
+  SELECT player_id, grp, COUNT(*) AS cnt
+  FROM wins
+  GROUP BY player_id, grp
+) t
+GROUP BY player_id;
