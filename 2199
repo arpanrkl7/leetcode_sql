@@ -1,0 +1,75 @@
+2199. Finding the Topic of Each Post
+Table: Keywords
+Column Name	Type
+topic_id	int
+word	varchar
+
+(topic_id, word) is the primary key of this table.
+
+Each row represents a keyword that belongs to a topic.
+
+Table: Posts
+Column Name	Type
+post_id	int
+content	varchar
+
+post_id is the primary key of this table.
+
+Each row contains the text content of a post.
+
+Definition
+
+A post belongs to a topic if the content of the post contains at least one keyword from that topic.
+
+Keyword matching is case-insensitive.
+
+A post can belong to multiple topics.
+
+Task
+
+Write an SQL query to find the topic(s) of each post.
+
+For each (post_id, topic_id) pair that satisfies the condition, include one row.
+
+If a post does not match any topic, report (post_id, NULL).
+
+Output Format
+
+Return a table with columns:
+
+post_id	topic_id
+
+Return the result table in any order.
+
+Example
+Input
+
+Keywords
+
+topic_id	word
+1	stock
+1	market
+2	election
+2	vote
+
+Posts
+
+post_id	content
+1	Stock market is rising today
+2	Go out and vote in the election
+3	Weather is nice today
+Output
+post_id	topic_id
+1	1
+2	2
+3	NULL
+
+Solution
+==========
+SELECT
+  p.post_id,
+  k.topic_id
+FROM Posts p
+LEFT JOIN Keywords k
+  ON LOWER(p.content) LIKE CONCAT('%', LOWER(k.word), '%')
+ORDER BY p.post_id;
