@@ -1,0 +1,116 @@
+3057. Employees Project Allocation
+Table: Project
+Column Name	Type
+project_id	int
+employee_id	int
+workload	int
+
+employee_id is the primary key of this table.
+
+employee_id is also a foreign key that references the Employees table.
+
+Each row indicates that the employee with employee_id is working on project project_id with a workload.
+
+Table: Employees
+Column Name	Type
+employee_id	int
+name	varchar
+team	varchar
+
+employee_id is the primary key of this table.
+
+Each row contains information about one employee.
+
+Problem
+
+Write a SQL query to find the employees who are allocated to projects with a workload that exceeds the average workload of all employees in their respective teams.
+
+Return the result table ordered by employee_id, then project_id in ascending order.
+
+Result Format
+
+Your output should have the following columns:
+
+Column Name
+employee_id
+project_id
+employee_name
+project_workload
+Example
+Input
+
+Project table:
+
+project_id	employee_id	workload
+1	1	45
+1	2	90
+2	3	12
+2	4	68
+
+Employees table:
+
+employee_id	name	team
+1	Khaled	A
+2	Ali	B
+3	John	B
+4	Doe	A
+Output
+employee_id	project_id	employee_name	project_workload
+2	1	Ali	90
+4	2	Doe	68
+
+Solution 1
+===========
+WITH team_avg AS (
+    SELECT
+        e.team,
+        AVG(p.workload) AS avg_workload
+    FROM Project p
+    JOIN Employees e
+        ON p.employee_id = e.employee_id
+    GROUP BY e.team
+)
+SELECT
+    p.employee_id,
+    p.project_id,
+    e.name AS employee_name,
+    p.workload AS project_workload
+FROM Project p
+JOIN Employees e
+    ON p.employee_id = e.employee_id
+JOIN team_avg t
+    ON e.team = t.team
+WHERE p.workload > t.avg_workload
+ORDER BY p.employee_id, p.project_id;
+
+Solution 2
+===========
+SELECT
+    p.employee_id,
+    p.project_id,
+    e.name AS employee_name,
+    p.workload AS project_workload
+FROM Project p
+JOIN Employees e
+  ON p.employee_id = e.employee_id
+WHERE p.workload > AVG(p.workload) OVER (PARTITION BY e.team)
+ORDER BY p.employee_id, p.project_id;
+
+Solution 3
+===========
+SELECT
+    p.employee_id,
+    p.project_id,
+    e.name AS employee_name,
+    p.workload AS project_workload
+FROM Project p
+JOIN Employees e
+  ON p.employee_id = e.employee_id
+WHERE p.workload > (
+    SELECT AVG(p2.workload)
+    FROM Project p2
+    JOIN Employees e2
+      ON p2.employee_id = e2.employee_id
+    WHERE e2.team = e.team
+)
+ORDER BY p.employee_id, p.project_id;
