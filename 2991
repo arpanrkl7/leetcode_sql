@@ -1,0 +1,138 @@
+2991. Top Three Wineries
+Table: Wines
+Column Name	Type
+winery	varchar
+year	int
+quantity	int
+
+There is no primary key for this table.
+
+Each row represents the quantity of wine produced by a winery in a specific year.
+
+A winery can appear in multiple years.
+
+Definition
+
+For each year, a winery’s total production is the sum of quantities produced by that winery in that year.
+
+Task
+
+Write an SQL query to report the top three wineries for each year based on their total wine production.
+
+If there are fewer than three wineries in a year, return all of them.
+
+Return the result table ordered by:
+
+year in ascending order
+
+total_quantity in descending order
+
+winery in ascending order
+
+Output Format
+
+Return a table with the following columns:
+
+year	winery	total_quantity
+Example
+Input
+
+Wines
+
+winery	year	quantity
+A	2020	100
+A	2020	50
+B	2020	120
+C	2020	80
+D	2020	60
+A	2021	200
+B	2021	180
+C	2021	220
+Output
+year	winery	total_quantity
+2020	B	120
+2020	A	150
+2020	C	80
+2021	C	220
+2021	A	200
+2021	B	180
+
+Solution 1
+==========
+WITH totals AS (
+  SELECT
+    year,
+    winery,
+    SUM(quantity) AS total_quantity
+  FROM Wines
+  GROUP BY year, winery
+),
+ranked AS (
+  SELECT
+    year,
+    winery,
+    total_quantity,
+    ROW_NUMBER() OVER (
+      PARTITION BY year
+      ORDER BY total_quantity DESC, winery ASC
+    ) AS rn
+  FROM totals
+)
+SELECT
+  year,
+  winery,
+  total_quantity
+FROM ranked
+WHERE rn <= 3
+ORDER BY year ASC, total_quantity DESC, winery ASC;
+
+Solution 2
+===========
+SELECT
+  t.year,
+  t.winery,
+  t.total_quantity
+FROM (
+  SELECT year, winery, SUM(quantity) AS total_quantity
+  FROM Wines
+  GROUP BY year, winery
+) t
+WHERE (
+  SELECT COUNT(*)
+  FROM (
+    SELECT year, winery, SUM(quantity) AS total_quantity
+    FROM Wines
+    GROUP BY year, winery
+  ) t2
+  WHERE t2.year = t.year
+    AND (
+      t2.total_quantity > t.total_quantity
+      OR (t2.total_quantity = t.total_quantity AND t2.winery < t.winery)
+    )
+) < 3
+ORDER BY t.year ASC, t.total_quantity DESC, t.winery ASC;
+
+Solution 3
+==========
+SELECT
+  t.year,
+  t.winery,
+  t.total_quantity
+FROM (
+  SELECT year, winery, SUM(quantity) AS total_quantity
+  FROM Wines
+  GROUP BY year, winery
+) t
+LEFT JOIN (
+  SELECT year, winery, SUM(quantity) AS total_quantity
+  FROM Wines
+  GROUP BY year, winery
+) t2
+  ON t2.year = t.year
+ AND (
+   t2.total_quantity > t.total_quantity
+   OR (t2.total_quantity = t.total_quantity AND t2.winery < t.winery)
+ )
+GROUP BY t.year, t.winery, t.total_quantity
+HAVING COUNT(t2.winery) < 3
+ORDER BY t.year ASC, t.total_quantity DESC, t.winery ASC;
