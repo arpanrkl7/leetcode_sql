@@ -1,0 +1,94 @@
+3673. Find Zombie Sessions
+Table: app_events
+Column Name	Type
+event_id	int
+user_id	int
+event_timestamp	datetime
+event_type	varchar
+session_id	varchar
+event_value	int
+
+event_id is the unique identifier for this table.
+
+session_id groups events within the same user session.
+
+event_type is one of: app_open, click, scroll, purchase, app_close.
+
+event_value is:
+
+NULL for non-scroll non-purchase events,
+
+number of pixels for scroll,
+
+purchase amount for purchase.
+
+Problem Statement
+
+Write a SQL query to identify zombie sessions — user sessions that appear active but exhibit abnormal behavior patterns.
+
+A session is considered a zombie session if all of the following are true:
+
+The session duration is more than 30 minutes.
+
+It has at least 5 scroll events.
+
+The click-to-scroll ratio is less than 0.20.
+
+There are no purchases in the session.
+
+Return
+
+Return the zombie sessions ordered by:
+
+scroll_count descending,
+
+session_id ascending.
+
+Output Format
+Column Name
+session_id
+user_id
+session_duration_minutes
+scroll_count
+Example
+Input
+
+app_events
+
+event_id	user_id	event_timestamp	event_type	session_id	event_value
+1	201	2024-03-01 10:00:00	app_open	S001	NULL
+...	...	...	...	...	...
+8	201	2024-03-01 10:35:00	app_close	S001	NULL
+...	...	...	...	...	...
+Explanation
+
+Session S001 lasts 35 minutes, has 6 scrolls, zero purchases, and a click/scroll ratio of 0/6 < 0.20 → zombie session.
+
+Example Output
+session_id	user_id	session_duration_minutes	scroll_count
+S001	201	35	6
+
+Solution
+--------
+WITH s AS (
+    SELECT
+        session_id,
+        user_id,
+        TIMESTAMPDIFF(MINUTE, MIN(event_timestamp), MAX(event_timestamp)) AS session_duration_minutes,
+        SUM(CASE WHEN event_type = 'scroll'   THEN 1 ELSE 0 END) AS scroll_count,
+        SUM(CASE WHEN event_type = 'click'    THEN 1 ELSE 0 END) AS click_count,
+        SUM(CASE WHEN event_type = 'purchase' THEN 1 ELSE 0 END) AS purchase_count
+    FROM app_events
+    GROUP BY session_id, user_id
+)
+SELECT
+    session_id,
+    user_id,
+    session_duration_minutes,
+    scroll_count
+FROM s
+WHERE session_duration_minutes > 30
+  AND scroll_count >= 5
+  AND purchase_count = 0
+  AND click_count * 1.0 / scroll_count < 0.20
+ORDER BY scroll_count DESC, session_id ASC;
