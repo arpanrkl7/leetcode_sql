@@ -1,0 +1,139 @@
+3384. Team Dominance by Pass Success
+Table: Passes
+Column Name	Type
+match_id	int
+team_id	int
+player_id	int
+result	varchar
+
+Each row represents a pass attempt made by a player in a match.
+
+result is either:
+
+'successful'
+
+'unsuccessful'
+
+Problem Statement
+
+For each match_id, determine which team dominated the match based on pass success rate.
+
+The pass success rate for a team in a match is:
+
+number of successful passes
+total passes
+total passes
+number of successful passes
+	​
+
+
+A team is considered dominant in a match if:
+
+Its pass success rate is strictly greater than the other team’s pass success rate.
+
+If both teams have the same success rate, then there is no dominant team for that match.
+
+Return
+
+Return the result table with the following columns:
+
+Column Name
+match_id
+dominant_team
+
+dominant_team is the team_id of the team with the higher pass success rate.
+
+Exclude matches where no team is dominant.
+
+Return the result ordered by match_id in ascending order.
+
+Example
+Input
+
+Passes
+
+match_id	team_id	player_id	result
+1	10	101	successful
+1	10	102	successful
+1	20	201	successful
+1	20	202	unsuccessful
+2	10	101	unsuccessful
+2	20	201	unsuccessful
+Explanation
+
+Match 1
+
+Team 10 → 2/2 = 100%
+
+Team 20 → 1/2 = 50%
+→ Team 10 dominates.
+
+Match 2
+
+Team 10 → 0%
+
+Team 20 → 0%
+→ No dominant team.
+
+Output
+match_id	dominant_team
+1	10
+
+Solution 1
+===========
+WITH team_stats AS (
+    SELECT
+        match_id,
+        team_id,
+        SUM(CASE WHEN result = 'successful' THEN 1 ELSE 0 END) AS successful_passes,
+        COUNT(*) AS total_passes
+    FROM Passes
+    GROUP BY match_id, team_id
+),
+ranked AS (
+    SELECT
+        match_id,
+        team_id,
+        successful_passes * 1.0 / total_passes AS success_rate,
+        ROW_NUMBER() OVER (
+            PARTITION BY match_id
+            ORDER BY successful_passes * 1.0 / total_passes DESC, team_id
+        ) AS rn,
+        LEAD(successful_passes * 1.0 / total_passes) OVER (
+            PARTITION BY match_id
+            ORDER BY successful_passes * 1.0 / total_passes DESC, team_id
+        ) AS next_rate
+    FROM team_stats
+)
+SELECT
+    match_id,
+    team_id AS dominant_team
+FROM ranked
+WHERE rn = 1
+  AND next_rate IS NOT NULL
+  AND success_rate > next_rate
+ORDER BY match_id;
+
+Solution 2
+==========
+WITH team_stats AS (
+    SELECT
+        match_id,
+        team_id,
+        SUM(CASE WHEN result = 'successful' THEN 1 ELSE 0 END) AS succ,
+        COUNT(*) AS tot
+    FROM Passes
+    GROUP BY match_id, team_id
+)
+SELECT
+    a.match_id,
+    CASE
+        WHEN a.succ * 1.0 / a.tot > b.succ * 1.0 / b.tot THEN a.team_id
+        WHEN b.succ * 1.0 / b.tot > a.succ * 1.0 / a.tot THEN b.team_id
+    END AS dominant_team
+FROM team_stats a
+JOIN team_stats b
+  ON a.match_id = b.match_id
+ AND a.team_id < b.team_id
+WHERE (a.succ * 1.0 / a.tot) <> (b.succ * 1.0 / b.tot)
+ORDER BY a.match_id;
