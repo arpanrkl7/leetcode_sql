@@ -1,0 +1,172 @@
+3390. Longest Team Pass Streak
+Table: Passes
+Column Name	Type
+match_id	int
+pass_id	int
+team_id	int
+result	varchar
+
+(match_id, pass_id) is the primary key.
+
+Each row represents a pass attempt in a match.
+
+pass_id is strictly increasing within each match_id.
+
+result is either:
+
+'successful'
+
+'unsuccessful'
+
+Problem Statement
+
+For each match_id and team_id, find the longest streak of consecutive successful passes.
+
+A streak:
+
+Consists only of consecutive passes with result = 'successful'
+
+Is broken when:
+
+The result is 'unsuccessful'
+
+The team changes
+
+Return the maximum streak length for each (match_id, team_id) pair.
+
+Return
+
+Return the result table ordered by:
+
+match_id ascending
+
+team_id ascending
+
+Output Format
+Column Name
+match_id
+team_id
+longest_streak
+Example
+Input
+
+Passes
+
+match_id	pass_id	team_id	result
+1	1	10	successful
+1	2	10	successful
+1	3	10	unsuccessful
+1	4	10	successful
+1	5	20	successful
+1	6	20	successful
+1	7	20	successful
+Explanation
+
+Match 1, Team 10:
+
+First streak = 2
+
+Second streak = 1
+→ Longest = 2
+
+Match 1, Team 20:
+
+One streak = 3
+→ Longest = 3
+
+Output
+match_id	team_id	longest_streak
+1	10	2
+1	20	3
+
+Solution 1
+===========
+WITH x AS (
+    SELECT
+        match_id,
+        team_id,
+        pass_id,
+        result,
+        -- start a new group when either:
+        -- 1) current pass is unsuccessful
+        -- 2) previous pass was unsuccessful
+        -- 3) team changes from previous pass
+        SUM(
+            CASE
+                WHEN result = 'unsuccessful'
+                  OR LAG(result) OVER (PARTITION BY match_id ORDER BY pass_id) = 'unsuccessful'
+                  OR LAG(team_id) OVER (PARTITION BY match_id ORDER BY pass_id) <> team_id
+                THEN 1 ELSE 0
+            END
+        ) OVER (PARTITION BY match_id ORDER BY pass_id) AS grp
+    FROM Passes
+),
+streaks AS (
+    SELECT
+        match_id,
+        team_id,
+        grp,
+        SUM(result = 'successful') AS streak_len
+    FROM x
+    GROUP BY match_id, team_id, grp
+)
+SELECT
+    match_id,
+    team_id,
+    MAX(streak_len) AS longest_streak
+FROM streaks
+GROUP BY match_id, team_id
+ORDER BY match_id, team_id;
+
+Solution 2
+==========
+WITH base AS (
+    SELECT
+        p.match_id,
+        p.pass_id,
+        p.team_id,
+        p.result,
+        CASE
+            WHEN p.result = 'unsuccessful' THEN 1
+            WHEN prev.pass_id IS NULL THEN 1
+            WHEN prev.result = 'unsuccessful' THEN 1
+            WHEN prev.team_id <> p.team_id THEN 1
+            ELSE 0
+        END AS is_break
+    FROM Passes p
+    LEFT JOIN Passes prev
+      ON prev.match_id = p.match_id
+     AND prev.pass_id  = p.pass_id - 1
+),
+grp AS (
+    SELECT
+        b.match_id,
+        b.pass_id,
+        b.team_id,
+        b.result,
+        (
+            SELECT COUNT(*)
+            FROM base b2
+            WHERE b2.match_id = b.match_id
+              AND b2.pass_id <= b.pass_id
+              AND b2.is_break = 1
+        ) AS g
+    FROM base b
+),
+streaks AS (
+    SELECT
+        match_id,
+        team_id,
+        g,
+        COUNT(*) AS streak_len
+    FROM grp
+    WHERE result = 'successful'
+    GROUP BY match_id, team_id, g
+)
+SELECT
+    match_id,
+    team_id,
+    MAX(streak_len) AS longest_streak
+FROM streaks
+GROUP BY match_id, team_id
+ORDER BY match_id, team_id;
