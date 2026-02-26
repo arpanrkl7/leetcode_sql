@@ -1,0 +1,92 @@
+3832. Find Users with Persistent Behavior Patterns
+Table: activity
+Column Name	Type
+user_id	int
+action_date	date
+action	varchar
+
+(user_id, action_date, action) is the primary key (unique) for this table.
+
+Each row represents a user performing a specific action on a given date.
+
+Task
+
+Write a solution to identify behaviorally stable users based on the following definition:
+
+A user is considered behaviorally stable if there exists a sequence of at least 5 consecutive days such that:
+
+The user performed exactly one action per day during that period.
+
+The action is the same on all those consecutive days.
+
+If a user has multiple qualifying sequences, only consider the sequence with the maximum length.
+
+Return the result table ordered by:
+
+streak_length DESC
+
+user_id ASC
+
+Output columns
+Column Name
+user_id
+action
+streak_length
+start_date
+end_date
+
+Solution
+=========
+WITH one_action_day AS (
+    -- keep only days where the user did exactly 1 action
+    SELECT
+        user_id,
+        action_date,
+        MAX(action) AS action
+    FROM activity
+    GROUP BY user_id, action_date
+    HAVING COUNT(*) = 1
+),
+islands AS (
+    SELECT
+        user_id,
+        action,
+        action_date,
+        DATE_SUB(
+            action_date,
+            INTERVAL ROW_NUMBER() OVER (
+                PARTITION BY user_id, action
+                ORDER BY action_date
+            ) DAY
+        ) AS grp
+    FROM one_action_day
+),
+streaks AS (
+    SELECT
+        user_id,
+        action,
+        COUNT(*) AS streak_length,
+        MIN(action_date) AS start_date,
+        MAX(action_date) AS end_date
+    FROM islands
+    GROUP BY user_id, action, grp
+    HAVING COUNT(*) >= 5
+),
+best AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY user_id
+            ORDER BY streak_length DESC, start_date ASC, action ASC
+        ) AS rn
+    FROM streaks
+)
+SELECT
+    user_id,
+    action,
+    streak_length,
+    start_date,
+    end_date
+FROM best
+WHERE rn = 1
+ORDER BY streak_length DESC, user_id ASC;
