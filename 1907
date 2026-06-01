@@ -1,0 +1,74 @@
+LeetCode 1907 — Count Salary Categories (Medium):
+
+Table: Accounts
++-------------+------+
+| Column Name | Type |
++-------------+------+
+| account_id  | int  |
+| income      | int  |
++-------------+------+
+account_id is the primary key for this table. Each row contains information about the monthly income for one bank account. AlgoMonster
+
+Task
+Write an SQL query to report the number of bank accounts of each salary category. The salary categories are: AlgoMonster
+
+"Low Salary": All the salaries strictly less than $20000. AlgoMonster
+"Average Salary": All the salaries in the inclusive range [$20000, $50000]. AlgoMonster
+"High Salary": All the salaries strictly greater than $50000. AlgoMonster
+
+The result table must contain all three categories. If there are no accounts in a category, then report 0. Return the result table in any order. AlgoMonster
+The query result format is in the following example.
+
+Example
+Input — Accounts table:
++------------+--------+
+| account_id | income |
++------------+--------+
+| 3          | 108939 |
+| 2          | 12747  |
+| 8          | 87709  |
+| 6          | 91796  |
++------------+--------+
+Output:
++----------------+----------------+
+| category       | accounts_count |
++----------------+----------------+
+| Low Salary     | 1              |
+| Average Salary | 0              |
+| High Salary    | 3              |
++----------------+----------------+
+
+Solution 1
+----------
+WITH salary_categories AS (
+    SELECT
+        account_id,
+        CASE
+            WHEN income < 20000 THEN 'Low Salary'
+            WHEN income >= 20000 AND income <= 50000 THEN 'Average Salary'
+            ELSE 'High Salary'
+        END as category
+    FROM accounts
+)
+, categories AS (
+    SELECT 'Low Salary' as category
+    UNION 
+    SELECT 'Average Salary' as category
+    UNION
+    SELECT 'High Salary' as category
+)
+
+SELECT
+    c.category,
+    IFNULL(COUNT(account_id), 0) AS accounts_count
+FROM categories c
+LEFT JOIN salary_categories sc ON c.category = sc.category
+GROUP BY c.category;
+
+Solution 2
+-----------
+SELECT 'Low Salary' as category, COUNT(*) as accounts_count FROM accounts WHERE income < 20000
+UNION
+SELECT 'Average Salary' as category, COUNT(*) as accounts_count FROM accounts WHERE income >= 20000 AND income <= 50000
+UNION
+SELECT 'High Salary' as category, COUNT(*) as accounts_count FROM accounts WHERE income > 50000;
