@@ -1,0 +1,138 @@
+3236. CEO Subordinate Hierarchy
+Table: Employees
+Column Name	Type
+employee_id	int
+employee_name	varchar
+manager_id	int
+
+employee_id is the primary key.
+
+Each row represents an employee.
+
+manager_id is the ID of the employee’s direct manager.
+
+The CEO has manager_id = NULL.
+
+It is guaranteed that the hierarchy forms a valid tree (no cycles).
+
+Problem Statement
+
+Write a SQL query to find all employees who report directly or indirectly to the CEO.
+
+The CEO is defined as the employee whose manager_id is NULL.
+
+Return all employees under the CEO’s hierarchy, excluding the CEO themself.
+
+Return
+
+Return the result table ordered by:
+
+employee_id in ascending order.
+
+Output Format
+Column Name
+employee_id
+employee_name
+Example
+Input
+
+Employees
+
+employee_id	employee_name	manager_id
+1	Alice	NULL
+2	Bob	1
+3	Carol	1
+4	David	2
+5	Eve	4
+Explanation
+
+Alice is the CEO (manager_id = NULL).
+
+Bob and Carol report directly to Alice.
+
+David reports to Bob.
+
+Eve reports to David.
+
+All employees except Alice are under the CEO hierarchy.
+
+Output
+employee_id	employee_name
+2	Bob
+3	Carol
+4	David
+5	Eve
+
+Solution
+=========
+WITH ceo AS (
+    SELECT employee_id AS ceo_id, salary AS ceo_salary
+    FROM Employees
+    WHERE manager_id IS NULL
+)
+SELECT subordinate_id, subordinate_name, hierarchy_level, salary_difference
+FROM (
+    -- Level 1 (direct reports)
+    SELECT
+        e1.employee_id AS subordinate_id,
+        e1.employee_name AS subordinate_name,
+        1 AS hierarchy_level,
+        e1.salary - c.ceo_salary AS salary_difference
+    FROM Employees e1
+    JOIN ceo c ON e1.manager_id = c.ceo_id
+
+    UNION ALL
+
+    -- Level 2
+    SELECT
+        e2.employee_id,
+        e2.employee_name,
+        2,
+        e2.salary - c.ceo_salary
+    FROM Employees e1
+    JOIN Employees e2 ON e2.manager_id = e1.employee_id
+    JOIN ceo c ON e1.manager_id = c.ceo_id
+
+    UNION ALL
+
+    -- Level 3
+    SELECT
+        e3.employee_id,
+        e3.employee_name,
+        3,
+        e3.salary - c.ceo_salary
+    FROM Employees e1
+    JOIN Employees e2 ON e2.manager_id = e1.employee_id
+    JOIN Employees e3 ON e3.manager_id = e2.employee_id
+    JOIN ceo c ON e1.manager_id = c.ceo_id
+
+    UNION ALL
+
+    -- Level 4
+    SELECT
+        e4.employee_id,
+        e4.employee_name,
+        4,
+        e4.salary - c.ceo_salary
+    FROM Employees e1
+    JOIN Employees e2 ON e2.manager_id = e1.employee_id
+    JOIN Employees e3 ON e3.manager_id = e2.employee_id
+    JOIN Employees e4 ON e4.manager_id = e3.employee_id
+    JOIN ceo c ON e1.manager_id = c.ceo_id
+
+    UNION ALL
+
+    -- Level 5
+    SELECT
+        e5.employee_id,
+        e5.employee_name,
+        5,
+        e5.salary - c.ceo_salary
+    FROM Employees e1
+    JOIN Employees e2 ON e2.manager_id = e1.employee_id
+    JOIN Employees e3 ON e3.manager_id = e2.employee_id
+    JOIN Employees e4 ON e4.manager_id = e3.employee_id
+    JOIN Employees e5 ON e5.manager_id = e4.employee_id
+    JOIN ceo c ON e1.manager_id = c.ceo_id
+) x
+ORDER BY hierarchy_level, subordinate_id;

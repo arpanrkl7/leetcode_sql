@@ -1,0 +1,134 @@
+3188. Find Top Scoring Students II
+Table: Students
+Column Name	Type
+student_id	int
+name	varchar
+major	varchar
+
+student_id is the primary key.
+
+Each row contains information about a student.
+
+Table: Exams
+Column Name	Type
+exam_id	int
+student_id	int
+score	int
+
+(exam_id, student_id) is the primary key.
+
+Each row represents a student’s score in a particular exam.
+
+student_id is a foreign key referencing the Students table.
+
+Problem Statement
+
+Write a SQL query to find the top scoring students in each major.
+
+For each major, return the student(s) who have the highest average score across all their exams.
+
+If multiple students in the same major have the same highest average score, return all of them.
+
+Return
+
+Return the result table ordered by:
+
+major in ascending order
+
+student_id in ascending order
+
+Output Format
+Column Name
+student_id
+name
+major
+avg_score
+
+avg_score should be rounded (if required by problem statement — typically not rounded unless specified).
+
+Example
+Input
+
+Students
+
+student_id	name	major
+1	Alice	CS
+2	Bob	CS
+3	Carol	Math
+
+Exams
+
+exam_id	student_id	score
+1	1	90
+2	1	95
+1	2	85
+2	2	80
+1	3	88
+2	3	92
+
+Solution 1
+===========
+WITH avg_scores AS (
+    SELECT
+        s.student_id,
+        s.name,
+        s.major,
+        AVG(e.score) AS avg_score
+    FROM Students s
+    JOIN Exams e
+        ON s.student_id = e.student_id
+    GROUP BY s.student_id, s.name, s.major
+),
+ranked AS (
+    SELECT
+        *,
+        RANK() OVER (
+            PARTITION BY major
+            ORDER BY avg_score DESC
+        ) AS rnk
+    FROM avg_scores
+)
+SELECT
+    student_id,
+    name,
+    major,
+    avg_score
+FROM ranked
+WHERE rnk = 1
+ORDER BY major, student_id;
+
+Solution 2
+===========
+-- Step 1: compute each student's average score
+WITH avg_scores AS (
+    SELECT
+        s.student_id,
+        s.name,
+        s.major,
+        AVG(e.score) AS avg_score
+    FROM Students s
+    JOIN Exams e
+        ON s.student_id = e.student_id
+    GROUP BY s.student_id, s.name, s.major
+),
+
+-- Step 2: compute the maximum average per major
+max_major AS (
+    SELECT
+        major,
+        MAX(avg_score) AS max_avg
+    FROM avg_scores
+    GROUP BY major
+)
+
+-- Step 3: return students whose avg matches the major max
+SELECT
+    a.student_id,
+    a.name,
+    a.major,
+    a.avg_score
+FROM avg_scores a
+JOIN max_major m
+    ON a.major = m.major
+   AND a.avg_score = m.max_avg
+ORDER BY a.major, a.student_id;

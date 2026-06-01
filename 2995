@@ -1,0 +1,119 @@
+2995. Viewers Turned Streamers
+Table: Sessions
+Column Name	Type
+user_id	int
+session_id	int
+session_type	enum
+session_date	date
+
+There is no primary key for this table.
+
+Each row represents a user’s session on a given date.
+
+session_type is an enum with values:
+
+'Viewer'
+
+'Streamer'
+
+Definition
+
+A user is considered a viewer turned streamer if:
+
+The user has at least one Viewer session, and
+
+The user has at least one Streamer session, and
+
+The user’s first Streamer session happens after their first Viewer session.
+
+Task
+
+Write an SQL query to find the user_id(s) of all viewers turned streamers.
+
+Return the result table in any order.
+
+Example
+Input
+
+Sessions
+
+user_id	session_id	session_type	session_date
+1	101	Viewer	2023-01-01
+1	102	Viewer	2023-01-02
+1	103	Streamer	2023-01-05
+2	201	Streamer	2023-01-01
+2	202	Viewer	2023-01-03
+3	301	Viewer	2023-01-02
+Output
+user_id
+1
+
+Solution 1
+===========
+SELECT
+  user_id
+FROM Sessions
+GROUP BY user_id
+HAVING
+  MIN(CASE WHEN session_type = 'Viewer'   THEN session_date END) IS NOT NULL
+  AND MIN(CASE WHEN session_type = 'Streamer' THEN session_date END) IS NOT NULL
+  AND MIN(CASE WHEN session_type = 'Streamer' THEN session_date END)
+      > MIN(CASE WHEN session_type = 'Viewer' THEN session_date END);
+
+Solution 2
+============
+SELECT v.user_id
+FROM (
+  SELECT user_id, MIN(session_date) AS first_view
+  FROM Sessions
+  WHERE session_type = 'Viewer'
+  GROUP BY user_id
+) v
+JOIN (
+  SELECT user_id, MIN(session_date) AS first_stream
+  FROM Sessions
+  WHERE session_type = 'Streamer'
+  GROUP BY user_id
+) s
+  ON v.user_id = s.user_id
+WHERE s.first_stream > v.first_view;
+
+Solution 3
+===========
+WITH ranked AS (
+  SELECT
+    user_id,
+    session_type,
+    session_date,
+    ROW_NUMBER() OVER (
+      PARTITION BY user_id, session_type
+      ORDER BY session_date
+    ) AS rn
+  FROM Sessions
+),
+firsts AS (
+  SELECT
+    user_id,
+    MAX(CASE WHEN session_type = 'Viewer' AND rn = 1 THEN session_date END) AS first_view,
+    MAX(CASE WHEN session_type = 'Streamer' AND rn = 1 THEN session_date END) AS first_stream
+  FROM ranked
+  GROUP BY user_id
+)
+SELECT user_id
+FROM firsts
+WHERE first_view IS NOT NULL
+  AND first_stream IS NOT NULL
+  AND first_stream > first_view;
+
+Solution 4
+============
+SELECT DISTINCT s1.user_id
+FROM Sessions s1
+WHERE s1.session_type = 'Viewer'
+  AND EXISTS (
+    SELECT 1
+    FROM Sessions s2
+    WHERE s2.user_id = s1.user_id
+      AND s2.session_type = 'Streamer'
+      AND s2.session_date > s1.session_date
+  );

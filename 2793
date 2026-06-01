@@ -1,0 +1,134 @@
+2793. Status of Flight Tickets
+Table: Flights
+Column Name	Type
+flight_id	int
+capacity	int
+
+flight_id is the primary key of this table.
+
+Each row contains information about a flight and the maximum number of passengers it can carry.
+
+Table: Passengers
+Column Name	Type
+passenger_id	int
+flight_id	int
+booking_time	datetime
+
+passenger_id is the primary key of this table.
+
+Each row represents a passenger booking a ticket for a flight at booking_time.
+
+Definition
+
+Passengers book tickets in chronological order based on booking_time.
+
+If the number of booked passengers for a flight is less than or equal to the flight’s capacity, the passenger’s ticket is confirmed.
+
+Otherwise, the passenger’s ticket is waitlisted.
+
+Task
+
+Write an SQL query to report the status of each flight ticket.
+
+For each passenger booking, return:
+
+passenger_id
+
+flight_id
+
+status — either 'Confirmed' or 'Waitlisted'
+
+Rules
+
+Ticket status is determined independently for each flight.
+
+Bookings are processed in ascending order of booking_time for each flight.
+
+Return the result table ordered by passenger_id in ascending order.
+
+Example
+Input
+
+Flights
+
+flight_id	capacity
+1	2
+2	1
+
+Passengers
+
+passenger_id	flight_id	booking_time
+101	1	2023-07-01 09:00:00
+102	1	2023-07-01 09:05:00
+103	1	2023-07-01 09:10:00
+201	2	2023-07-01 10:00:00
+202	2	2023-07-01 10:01:00
+Output
+passenger_id	flight_id	status
+101	1	Confirmed
+102	1	Confirmed
+103	1	Waitlisted
+201	2	Confirmed
+202	2	Waitlisted
+
+Solution 1
+=========
+SELECT
+  p.passenger_id,
+  p.flight_id,
+  CASE
+    WHEN ROW_NUMBER() OVER (
+           PARTITION BY p.flight_id
+           ORDER BY p.booking_time
+         ) <= f.capacity
+    THEN 'Confirmed'
+    ELSE 'Waitlisted'
+  END AS status
+FROM Passengers p
+JOIN Flights f
+  ON p.flight_id = f.flight_id
+ORDER BY p.passenger_id;
+
+Solution 2
+=========
+SELECT
+  p.passenger_id,
+  p.flight_id,
+  CASE
+    WHEN (
+      SELECT COUNT(*)
+      FROM Passengers p2
+      WHERE p2.flight_id = p.flight_id
+        AND (
+          p2.booking_time < p.booking_time
+          OR (p2.booking_time = p.booking_time AND p2.passenger_id <= p.passenger_id)
+        )
+    ) <= f.capacity
+    THEN 'Confirmed'
+    ELSE 'Waitlisted'
+  END AS status
+FROM Passengers p
+JOIN Flights f
+  ON f.flight_id = p.flight_id
+ORDER BY p.passenger_id;
+
+Solution 3
+=========
+SELECT
+  p.passenger_id,
+  p.flight_id,
+  CASE
+    WHEN COUNT(p2.passenger_id) <= f.capacity THEN 'Confirmed'
+    ELSE 'Waitlisted'
+  END AS status
+FROM Passengers p
+JOIN Flights f
+  ON f.flight_id = p.flight_id
+JOIN Passengers p2
+  ON p2.flight_id = p.flight_id
+ AND (
+   p2.booking_time < p.booking_time
+   OR (p2.booking_time = p.booking_time AND p2.passenger_id <= p.passenger_id)
+ )
+GROUP BY p.passenger_id, p.flight_id, f.capacity
+ORDER BY p.passenger_id;

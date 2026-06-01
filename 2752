@@ -1,0 +1,86 @@
+2752. Customers with Maximum Number of Transactions on Consecutive Days
+Table: Transactions
+Column Name	Type
+transaction_id	int
+customer_id	int
+transaction_date	date
+
+transaction_id is the primary key of this table.
+
+Each row represents a transaction made by a customer on a given date.
+
+A customer can have multiple transactions per day.
+
+Definition
+
+For a given customer, define a consecutive-day transaction sequence as:
+
+A sequence of consecutive calendar days (no gaps),
+
+Where the customer has at least one transaction on each day in the sequence.
+
+The length of a sequence is the number of days in it.
+
+Task
+
+Write an SQL query to find the customer_id(s) whose longest consecutive-day transaction sequence is maximum among all customers.
+
+If multiple customers tie for the maximum length, return all of them.
+
+Return the result table in any order.
+
+Example
+Input
+
+Transactions
+
+transaction_id	customer_id	transaction_date
+1	1	2023-01-01
+2	1	2023-01-02
+3	1	2023-01-04
+4	2	2023-01-01
+5	2	2023-01-02
+6	2	2023-01-03
+7	3	2023-01-02
+Output
+customer_id
+2
+
+Solution
+==========
+WITH days AS (
+  SELECT DISTINCT customer_id, transaction_date
+  FROM Transactions
+),
+grp AS (
+  SELECT
+    customer_id,
+    transaction_date,
+    -- "islands" trick: consecutive dates share the same key
+    DATE_SUB(transaction_date, INTERVAL ROW_NUMBER() OVER (
+      PARTITION BY customer_id ORDER BY transaction_date
+    ) DAY) AS grp_key
+  FROM days
+),
+streaks AS (
+  SELECT
+    customer_id,
+    COUNT(*) AS streak_len
+  FROM grp
+  GROUP BY customer_id, grp_key
+),
+best AS (
+  SELECT
+    customer_id,
+    MAX(streak_len) AS longest_streak
+  FROM streaks
+  GROUP BY customer_id
+),
+mx AS (
+  SELECT MAX(longest_streak) AS max_streak
+  FROM best
+)
+SELECT b.customer_id
+FROM best b
+JOIN mx
+  ON b.longest_streak = mx.max_streak;

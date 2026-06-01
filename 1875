@@ -1,0 +1,61 @@
+LeetCode 1875 — Group Employees of the Same Salary (Medium):
+
+Table: Employees
++-------------+---------+
+| Column Name | Type    |
++-------------+---------+
+| employee_id | int     |
+| name        | varchar |
+| salary      | int     |
++-------------+---------+
+employee_id is the primary key for this table. Each row of this table indicates the employee ID, employee name, and salary. GitHub
+
+Task
+A company wants to divide the employees into teams such that all the members on each team have the same salary. The teams should follow these criteria: GitHub
+
+Each team should consist of at least two employees. GitHub
+All the employees on a team should have the same salary. GitHub
+All the employees of the same salary should be assigned to the same team. GitHub
+If the salary of an employee is unique, we do not assign this employee to any team. GitHub
+A team's ID is assigned based on the rank of the team's salary relative to the other teams' salaries, where the team with the lowest salary has team_id = 1. Note that the salaries for employees not on a team are not included in this ranking. GitHub
+
+Write an SQL query to get the team_id of each employee that is in a team. Return the result table ordered by team_id in ascending order. In case of a tie, order it by employee_id in ascending order. GitHub
+The query result format is in the following example.
+
+Example
+Input — Employees table:
++-------------+---------+--------+
+| employee_id | name    | salary |
++-------------+---------+--------+
+| 2           | Meir    | 3000   |
+| 3           | Michael | 3000   |
+| 7           | Addilyn | 7400   |
+| 8           | Juan    | 6100   |
+| 9           | Kannon  | 7400   |
++-------------+---------+--------+
+Output:
++-------------+---------+--------+---------+
+| employee_id | name    | salary | team_id |
++-------------+---------+--------+---------+
+| 2           | Meir    | 3000   | 1       |
+| 3           | Michael | 3000   | 1       |
+| 7           | Addilyn | 7400   | 2       |
+| 9           | Kannon  | 7400   | 2       |
++-------------+---------+--------+---------+
+
+Solution
+--------
+WITH valid_salary AS (
+    SELECT
+        salary
+    FROM employees
+    GROUP BY salary
+    HAVING COUNT(salary) > 1
+)
+
+SELECT 
+    e.*,
+    DENSE_RANK() OVER(ORDER BY e.salary) AS team_id
+FROM employees e 
+WHERE e.salary IN (SELECT salary FROM valid_salary)
+ORDER BY team_id, employee_id;

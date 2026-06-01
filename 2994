@@ -1,0 +1,82 @@
+2994. Friday Purchases II
+Table: Purchases
+Column Name	Type
+purchase_id	int
+user_id	int
+purchase_date	date
+amount	int
+
+purchase_id is the primary key of this table.
+
+Each row represents a purchase made by a user on a given date with a given amount.
+
+Table: Users
+Column Name	Type
+user_id	int
+join_date	date
+
+user_id is the primary key of this table.
+
+Each row contains information about a user and the date they joined the platform.
+
+Definition
+
+A Friday purchase is a purchase where the purchase_date falls on a Friday.
+
+Task
+
+Write an SQL query to report the total amount spent on Fridays by users, grouped by the number of weeks since they joined.
+
+The week index is defined as:
+
+floor( (purchase_date - join_date) / 7 )
+
+Only include purchases made on Fridays.
+
+If a user has no Friday purchases in a given week index, that week does not appear in the output.
+
+Output Format
+
+Return a table with the following columns:
+
+week	total_amount
+
+week — the week index since the user joined (starting from 0)
+
+total_amount — sum of amount for all Friday purchases in that week
+
+Return the result table ordered by week in ascending order.
+
+Example
+Input
+
+Users
+
+user_id	join_date
+1	2023-01-01
+2	2023-01-03
+
+Purchases
+
+purchase_id	user_id	purchase_date	amount
+1	1	2023-01-06	100
+2	1	2023-01-13	200
+3	2	2023-01-06	50
+4	2	2023-01-20	150
+Output
+week	total_amount
+0	150
+1	200
+2	150
+
+Solution
+=========
+SELECT
+  FLOOR(DATEDIFF(p.purchase_date, u.join_date) / 7) AS week,
+  SUM(p.amount) AS total_amount
+FROM Purchases p
+JOIN Users u
+  ON p.user_id = u.user_id
+WHERE DAYOFWEEK(p.purchase_date) = 6   -- Friday in MySQL (1=Sun, ..., 6=Fri, 7=Sat)
+GROUP BY week
+ORDER BY week;

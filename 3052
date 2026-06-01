@@ -1,0 +1,69 @@
+3052. Maximize Items
+Table: Inventory
+Column Name	Type
+item_id	int
+item_type	varchar
+quantity	int
+
+item_id is the primary key of this table.
+
+Each row represents an item in the inventory.
+
+item_type is either 'A' or 'B'.
+
+quantity represents the number of available items of that type for this row.
+
+Problem Statement
+
+You want to maximize the total number of items you can take from the inventory under the following rules:
+
+You can take items from the inventory row by row.
+
+You must take items in this order:
+
+First, take items with item_type = 'A'
+
+Then, take items with item_type = 'B'
+
+You can take at most 2 items of type 'A' in total.
+
+You can take at most 3 items of type 'B' in total.
+
+From each row, you may take any number of items up to quantity.
+
+Goal
+
+Write a SQL query to return the maximum total number of items you can take.
+
+Output Format
+
+The result table should contain one row with one column:
+
+Column Name
+max_items
+Example
+Input: Inventory
+item_id	item_type	quantity
+1	A	2
+2	A	1
+3	B	2
+4	B	3
+Explanation
+
+From type A, you can take at most 2 items → take 2
+
+From type B, you can take at most 3 items → take 3
+
+Total = 2 + 3 = 5
+
+Output
+max_items
+5
+
+Solution
+========
+SELECT
+  LEAST(SUM(CASE WHEN item_type = 'A' THEN quantity ELSE 0 END), 2)
+  +
+  LEAST(SUM(CASE WHEN item_type = 'B' THEN quantity ELSE 0 END), 3) AS max_items
+FROM Inventory;

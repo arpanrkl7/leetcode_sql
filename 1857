@@ -1,0 +1,83 @@
+1892. Page Recommendations II
+Table: Friendship
+Column Name	Type
+user1_id	int
+user2_id	int
+
+(user1_id, user2_id) is the primary key of this table.
+
+Each row indicates a friendship between user1_id and user2_id.
+
+Friendship is bidirectional:
+
+If (a, b) is in the table, then (b, a) is also considered a friendship.
+
+However, the table stores only one direction of each friendship pair.
+
+Table: Likes
+Column Name	Type
+user_id	int
+page_id	int
+
+(user_id, page_id) is the primary key of this table.
+
+Each row indicates that user_id likes page_id.
+
+Task
+
+Write an SQL query to recommend pages to users.
+
+For each user, recommend a page if at least one of their friends likes the page, and the user does not already like the page.
+
+Return the result table with columns:
+
+user_id
+
+page_id
+
+Return the result table in any order.
+
+Example
+Input
+
+Friendship
+
+user1_id	user2_id
+1	2
+1	3
+2	3
+
+Likes
+
+user_id	page_id
+1	88
+2	23
+3	24
+2	24
+3	88
+Output
+user_id	page_id
+1	23
+1	24
+2	88
+3	23
+
+Solution
+---------
+WITH friends AS (
+  SELECT user1_id AS user_id, user2_id AS friend_id FROM Friendship
+  UNION ALL
+  SELECT user2_id AS user_id, user1_id AS friend_id FROM Friendship
+)
+SELECT DISTINCT
+  f.user_id,
+  l.page_id
+FROM friends f
+JOIN Likes l
+  ON l.user_id = f.friend_id
+LEFT JOIN Likes mine
+  ON mine.user_id = f.user_id
+ AND mine.page_id = l.page_id
+WHERE mine.page_id IS NULL;
+
+

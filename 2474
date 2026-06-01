@@ -1,0 +1,76 @@
+2474. Customers With Strictly Increasing Purchases
+Table: Orders
+Column Name	Type
+order_id	int
+customer_id	int
+order_date	date
+price	int
+
+order_id is the primary key of this table.
+
+Each row represents an order made by a customer on a given date with a given price.
+
+Each customer can have multiple orders.
+
+order_date values are unique per customer (i.e., a customer cannot place two orders on the same date).
+
+Definition
+
+A customer has strictly increasing purchases if:
+
+For every consecutive pair of orders (ordered by order_date) made by the customer,
+the price of the later order is strictly greater than the price of the earlier order.
+
+Customers with only one order are considered to have strictly increasing purchases.
+
+Task
+
+Write an SQL query to find the customer_id(s) of customers whose purchases are strictly increasing over time.
+
+Return the result table in any order.
+
+Example
+Input
+
+Orders
+
+order_id	customer_id	order_date	price
+1	1	2021-01-01	10
+2	1	2021-01-02	20
+3	1	2021-01-03	30
+4	2	2021-01-01	20
+5	2	2021-01-02	20
+6	3	2021-01-01	50
+Output
+customer_id
+1
+3
+
+Solution 1
+==========
+WITH prevs AS (
+  SELECT
+    customer_id,
+    price,
+    LAG(price) OVER (PARTITION BY customer_id ORDER BY order_date) AS prev_price
+  FROM Orders
+)
+SELECT
+  customer_id
+FROM prevs
+GROUP BY customer_id
+HAVING MAX(CASE WHEN prev_price IS NOT NULL AND prev_price >= price THEN 1 ELSE 0 END) = 0;
+
+
+Solution 2
+===========
+SELECT DISTINCT customer_id
+FROM Orders
+WHERE customer_id NOT IN (
+  SELECT o1.customer_id
+  FROM Orders o1
+  JOIN Orders o2
+    ON o1.customer_id = o2.customer_id
+   AND o1.order_date < o2.order_date
+   AND o1.price >= o2.price
+);

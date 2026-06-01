@@ -1,0 +1,92 @@
+2701. Consecutive Transactions with Increasing Amounts
+Table: Transactions
+Column Name	Type
+transaction_id	int
+customer_id	int
+transaction_date	date
+amount	int
+
+transaction_id is the primary key of this table.
+
+Each row represents a transaction made by a customer on a given date with a given amount.
+
+For each customer, transaction_date values are unique.
+
+Definition
+
+A customer has consecutive transactions with increasing amounts if:
+
+There exist at least three consecutive transactions (ordered by transaction_date)
+such that the amount strictly increases from one transaction to the next.
+
+Formally, for three transactions on dates d1 < d2 < d3:
+
+amount(d1) < amount(d2) < amount(d3)
+Task
+
+Write an SQL query to find the customer_id(s) who have at least one such sequence.
+
+Return the result table in any order.
+
+Example
+Input
+
+Transactions
+
+transaction_id	customer_id	transaction_date	amount
+1	1	2021-01-01	10
+2	1	2021-01-02	20
+3	1	2021-01-03	30
+4	2	2021-01-01	10
+5	2	2021-01-02	20
+6	2	2021-01-03	15
+7	3	2021-01-01	5
+8	3	2021-01-02	6
+9	3	2021-01-03	7
+10	3	2021-01-04	6
+Output
+customer_id
+1
+3
+
+Solution 1
+=========
+SELECT DISTINCT customer_id
+FROM (
+  SELECT
+    customer_id,
+    amount,
+    LAG(amount, 1) OVER (PARTITION BY customer_id ORDER BY transaction_date) AS prev1,
+    LAG(amount, 2) OVER (PARTITION BY customer_id ORDER BY transaction_date) AS prev2
+  FROM Transactions
+) t
+WHERE prev2 IS NOT NULL
+  AND prev2 < prev1
+  AND prev1 < amount;
+
+  Solution 2
+  ==========
+  SELECT DISTINCT t1.customer_id
+FROM Transactions t1
+JOIN Transactions t2
+  ON t1.customer_id = t2.customer_id
+ AND t1.transaction_date < t2.transaction_date
+JOIN Transactions t3
+  ON t2.customer_id = t3.customer_id
+ AND t2.transaction_date < t3.transaction_date
+WHERE t1.amount < t2.amount
+  AND t2.amount < t3.amount
+  -- ensure no transaction exists between t1 and t2
+  AND NOT EXISTS (
+    SELECT 1 FROM Transactions x
+    WHERE x.customer_id = t1.customer_id
+      AND x.transaction_date > t1.transaction_date
+      AND x.transaction_date < t2.transaction_date
+  )
+  -- ensure no transaction exists between t2 and t3
+  AND NOT EXISTS (
+    SELECT 1 FROM Transactions y
+    WHERE y.customer_id = t2.customer_id
+      AND y.transaction_date > t2.transaction_date
+      AND y.transaction_date < t3.transaction_date
+  );

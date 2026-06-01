@@ -1,0 +1,193 @@
+3214. Year on Year Growth Rate
+Table: Sales
+Column Name	Type
+product_id	int
+year	int
+revenue	int
+
+(product_id, year) is the primary key.
+
+Each row represents the revenue of a product in a specific year.
+
+It is guaranteed that revenue is non-negative.
+
+Problem Statement
+
+Write a SQL query to calculate the year-on-year growth rate for each product.
+
+The year-on-year growth rate is defined as:
+
+𝑐
+𝑢
+𝑟
+𝑟
+𝑒
+𝑛
+𝑡
+_
+𝑦
+𝑒
+𝑎
+𝑟
+_
+𝑟
+𝑒
+𝑣
+𝑒
+𝑛
+𝑢
+𝑒
+−
+𝑝
+𝑟
+𝑒
+𝑣
+𝑖
+𝑜
+𝑢
+𝑠
+_
+𝑦
+𝑒
+𝑎
+𝑟
+_
+𝑟
+𝑒
+𝑣
+𝑒
+𝑛
+𝑢
+𝑒
+𝑝
+𝑟
+𝑒
+𝑣
+𝑖
+𝑜
+𝑢
+𝑠
+_
+𝑦
+𝑒
+𝑎
+𝑟
+_
+𝑟
+𝑒
+𝑣
+𝑒
+𝑛
+𝑢
+𝑒
+×
+100
+previous_year_revenue
+current_year_revenue−previous_year_revenue
+	​
+
+×100
+
+For each product_id and year (except the first year available for that product), compute the growth rate compared to the previous year.
+
+Return
+
+Return the result table ordered by:
+
+product_id ascending
+
+year ascending
+
+Output Format
+Column Name
+product_id
+year
+growth_rate
+
+growth_rate should be expressed as a percentage.
+
+Round growth_rate to 2 decimal places.
+
+Example
+Input
+
+Sales
+
+product_id	year	revenue
+1	2020	100
+1	2021	120
+1	2022	150
+2	2021	200
+2	2022	180
+Explanation
+
+For product 1:
+
+2021 growth = ((120 - 100) / 100) * 100 = 20.00
+
+2022 growth = ((150 - 120) / 120) * 100 = 25.00
+
+For product 2:
+
+2022 growth = ((180 - 200) / 200) * 100 = -10.00
+
+Output
+product_id	year	growth_rate
+1	2021	20.00
+1	2022	25.00
+2	2022	-10.00
+
+Solution 1
+=========
+WITH t AS (
+    SELECT
+        product_id,
+        year,
+        revenue,
+        LAG(revenue) OVER (PARTITION BY product_id ORDER BY year) AS prev_revenue
+    FROM Sales
+)
+SELECT
+    product_id,
+    year,
+    ROUND((revenue - prev_revenue) * 100.0 / prev_revenue, 2) AS growth_rate
+FROM t
+WHERE prev_revenue IS NOT NULL
+ORDER BY product_id, year;
+
+Solution 2
+=========
+SELECT
+    s1.product_id,
+    s1.year,
+    ROUND(
+        (s1.revenue - s2.revenue) * 100.0 / s2.revenue,
+        2
+    ) AS growth_rate
+FROM Sales s1
+JOIN Sales s2
+  ON s1.product_id = s2.product_id
+ AND s1.year = s2.year + 1
+ORDER BY s1.product_id, s1.year;
+
+Solution 3
+==========
+Without Window Functions — Handles Missing Years
+
+SELECT
+    s1.product_id,
+    s1.year,
+    ROUND(
+        (s1.revenue - s2.revenue) * 100.0 / s2.revenue,
+        2
+    ) AS growth_rate
+FROM Sales s1
+JOIN Sales s2
+  ON s1.product_id = s2.product_id
+ AND s2.year = (
+        SELECT MAX(s3.year)
+        FROM Sales s3
+        WHERE s3.product_id = s1.product_id
+          AND s3.year < s1.year
+    )
+ORDER BY s1.product_id, s1.year;
