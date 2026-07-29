@@ -64,7 +64,7 @@ Student 102 in Math: Improved from 80 to 85
 Student 103 in Math: Only one exam, not eligible
 Student 104 in Physics: Improved from 75 to 85
 
-Solution
+Solution 1
 --------
 With cte as (
     select
@@ -88,4 +88,21 @@ from (select * from cte2 where rn = min_rn) a
 join (select * from cte2 where rn = max_rn) b on a.student_id = b.student_id and a.subject = b.subject and a.score < b.score
 order by a.student_id, a.subject
 
-Result table is ordered by student_id, subject.
+Solution 2
+-----------
+with cte as (
+    select
+        *,
+        first_value(score) over (partition by student_id, subject order by exam_date rows between unbounded preceding and unbounded following) as first_value,
+        last_value(score) over (partition by student_id, subject order by exam_date rows between unbounded preceding and unbounded following) as last_value,
+        count(*) over (partition by student_id, subject) as count
+    from Scores
+)
+select 
+    distinct 
+    student_id, 
+    subject,
+    first_value as first_score,
+    last_value as latest_score
+from cte where count > 1 and first_value < last_value
+order by student_id, subject;
