@@ -18,7 +18,32 @@
 -- +--------+
 -- Write a query to find the median of all numbers and name the result as median.
 
--- Solution 1
+Solution 1
+-----------
+with cte as (
+    select
+        *,
+        sum(frequency) over(order by num) as c_sum,
+        sum(frequency) over() as t_sum
+    from Numbers
+)
+select round(((
+(select
+    num
+from cte
+where 
+(c_sum - frequency)  < ((t_sum + 1) / 2)
+and ((t_sum + 1) / 2) <= c_sum)
++
+(select
+    num
+from cte
+where 
+(c_sum - frequency)  < ((t_sum + 2) / 2)
+and ((t_sum + 2) / 2) <= c_sum)
+)::numeric / 2), 1) as median
+
+-- Solution 2
 with t1 as(
 select *,
 sum(frequency) over(order by number) as cum_sum, (sum(frequency) over())/2 as middle
@@ -28,7 +53,7 @@ select avg(number) as median
 from t1
 where middle between (cum_sum - frequency) and cum_sum
 
--- Solution 2
+-- Solution 3
 -- create lower and upper bounds
 -- lower bound = running_tital - freq
 -- upper bound = running total
