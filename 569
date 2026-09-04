@@ -35,30 +35,19 @@
 -- +-----+------------+--------+
 
 -- Solution 1
-select id, company, salary
-from
-(select *, 
-row_number() over(partition by company order by salary) as rn,
-count(*) over(partition by company) as cnt
-from employee) a
-where rn between cnt/2 and cnt/2+1
-
-
--- Solution 2
-WITH ranking AS (
-SELECT
-  Id
-  ,Company
-  ,Salary
-  ,COUNT(*) OVER (PARTITION BY Company) AS total_count
-  ,RANK() OVER (PARTITION BY Company ORDER BY Salary DESC) AS rank 
-FROM Employee)
-SELECT 
-  Id
-  ,Company
-  ,Salary
-FROM ranking
-WHERE rank = FLOOR((total_count + 1) / 2)
-  OR rank = FLOOR((total_count + 2) / 2);
+with cte as (
+    select
+        *,
+        row_number() over(partition by company order by salary) as rn,
+        count(*) over (partition by company) as count
+    from 
+    Employee
+)
+select 
+    id,
+    company,
+    salary
+from cte c
+where rn between ((count + 1) / 2) and ((count + 2) / 2)
 
 -- goole- 1  
