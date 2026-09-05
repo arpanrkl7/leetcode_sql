@@ -43,23 +43,39 @@
 -- On 2019-07-02, user 2 purchased using mobile only, user 3 purchased using desktop only and no one purchased using both platforms.
 
 -- Solution
-SELECT p.spend_date, p.platform, IFNULL(SUM(amount), 0) total_amount, COUNT(DISTINCT u.user_id) total_users
-FROM
+select 
+    a.spend_date,
+    a.platform,
+    coalesce(sum(amount), 0) as total_amount,
+    count(distinct user_id) as total_users
+from
+    (
+        select
+            distinct spend_date,
+            'mobile' as platform
+        from Spending
+        union
+        select
+            distinct spend_date,
+            'desktop' as platform
+        from Spending
+        union
+        select
+            distinct spend_date,
+            'both' as platform
+        from Spending
+    ) a
+left join 
 (
-SELECT DISTINCT(spend_date), 'desktop' platform FROM Spending
-UNION
-SELECT DISTINCT(spend_date), 'mobile' platform FROM Spending
-UNION
-SELECT DISTINCT(spend_date), 'both' platform FROM Spending
-) p LEFT JOIN
-
-(SELECT user_id, spend_date, SUM(amount) amount, (CASE WHEN COUNT(DISTINCT platform)>1 THEN "both" ELSE platform END) platform
-FROM Spending
-GROUP BY spend_date, user_id) u
-
-ON p.platform = u.platform AND p.spend_date=u.spend_date
-
-GROUP BY p.spend_date, p.platform
+    select
+        spend_date,
+        user_id,
+        amount,
+        case when (count(platform) over(partition by user_id, spend_date)) = 1 then platform else 'both' end as platform
+    from Spending
+) b on a.spend_date = b.spend_date and a.platform = b.platform
+group by 1,2
+order by 1
 
 
 -- LinkedIn- 1
