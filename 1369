@@ -89,3 +89,26 @@ FROM users_filter uf
 LEFT JOIN activity_ranker ar ON 
     ar.username = uf.username AND 
     ar.a_rank = uf.r_rank;
+
+Solution 3
+------------
+select
+    username,
+    activity,
+    startDate,
+    endDate
+from (
+    select
+        *,
+        row_number() over(partition by username order by startDate desc) as rn
+    from
+    UserActivity
+)
+where rn = 2
+
+union
+
+select 
+    *
+from UserActivity
+where username in (select username from UserActivity group by 1 having count(*) = 1)
