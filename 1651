@@ -180,3 +180,29 @@ GROUP BY m.month;
 Solution 3
 -----------
 think of solution 2 to join RECURSIVE months and ride_calc on ride_calc.month <= months.month and then group on months
+
+with recursive cte as
+(
+    select 1 as month
+    union
+    select cte.month+1 from cte where cte.month < 12
+)
+select *
+from
+(
+    select
+        month,
+        round(((sum(ride_distance) over(order by month rows between current row and 2 following)) / 3), 2) as average_ride_distance,
+        round(((sum(ride_duration) over(order by month rows between current row and 2 following)) / 3), 2) as average_ride_duration
+    from(
+        select
+            c.month,
+            sum(coalesce(ride_distance, 0)) ride_distance,
+            sum(coalesce(ride_duration,0)) as ride_duration
+        from cte c
+        left join (select * from Rides where extract(year from requested_at) = 2020) r on c.month = extract(month from r.requested_at)
+        left join AcceptedRides ar on r.ride_id = ar.ride_id
+        group by 1
+        order by 1
+    )
+) where month < 11
