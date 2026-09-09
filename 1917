@@ -72,6 +72,25 @@ user1_id	user2_id
 2	3
 
 Solution 1
+-----------
+with cte as (
+    select
+        distinct user_id, song_id, day
+    from Listens
+)
+
+select
+    distinct
+    a.user_id as user_id,
+    b.user_id as recommended_id
+from Listens a
+join Listens b on a. song_id = b.song_id and a.day = b.day and a.user_id != b.user_id
+where (a.user_id, b.user_id) not in (select * from Friendship union select user2_id, user1_id from Friendship)
+group by 1,2,a.day
+having count(distinct a.song_id) >= 3
+
+
+Solution 2
 ----------
 WITH pairs AS (
   SELECT
@@ -101,7 +120,7 @@ SELECT u2 AS user_id, u1 AS recommended_id
 FROM not_friends;
 
 
-Solution 2
+Solution 3
 ----------
 # Solution with two CTEs and simple JOIN
 WITH friends AS (
