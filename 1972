@@ -53,21 +53,24 @@ user_id
 
 Solution
 --------
-with all_calls as
-(select caller_id as user1, recipient_id as user2, call_time
-from Calls
-union all
-select recipient_id, caller_id, call_time
-from Calls),
-
-first_last_calls as
-(select distinct user1, 
-    first_value(user2) over(partition by user1, date(call_time) order by call_time asc) as first_call,
-    first_value(user2) over(partition by user1, date(call_time) order by call_time desc) as last_call
-from all_calls)
-
-select distinct user1 as user_id
-from first_last_calls
-where first_call = last_call
+with cte as (
+    select *
+    from Calls
+    union
+    select 
+        recipient_id,
+        caller_id,
+        call_time
+    from Calls
+)
+select distinct caller_id as user_id
+from (
+    select
+        *,
+        first_value(recipient_id) over (partition by caller_id, to_char(call_time, 'yyyy-mm-dd') order by call_time rows between unbounded preceding and unbounded following) as firts_call,
+        last_value(recipient_id) over (partition by caller_id, to_char(call_time, 'yyyy-mm-dd') order by call_time rows between unbounded preceding and unbounded following) as last_call
+    from cte
+)
+where firts_call = last_call
 
 -- amazon- 5
