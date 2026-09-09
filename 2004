@@ -60,7 +60,35 @@ Output
 seniors	juniors
 2	1
 
-Solution
+Solution 1
+----------
+with cte as(
+    select 
+        *,
+        sum(salary) over (partition by experience order by salary rows between unbounded preceding and current row) as cum_salary,
+        row_number() over(partition by experience order by salary) as rn
+    from Candidates
+),
+cte1 as(
+    select
+        'Senior' as experience,
+        rn as accepted_candidates
+    from (select rn from cte where cum_salary <= 70000 and experience = 'Senior' order by cum_salary desc limit 1)
+
+    union
+
+    select
+        'Junior' as experience,
+        rn as accepted_candidates
+    from (select rn from cte where cum_salary <= (70000 - (select coalesce(max(cum_salary), 0) from cte where experience = 'Senior' and cum_salary <= 70000)) and experience = 'Junior' order by cum_salary desc limit 1) 
+)
+select * from cte1
+union
+select 'Senior', 0 from cte1 where 0 = (select count(*) from cte1 where experience = 'Senior')
+union
+select 'Junior', 0 from cte1 where 0 = (select count(*) from cte1 where experience = 'Junior')
+
+Solution 2
 ==========
 with cte as
 (select *, sum(salary) over(partition by experience order by salary) as running_salary
