@@ -59,44 +59,21 @@ hall_id	start_day	end_day
 
 Solution
 ---------
-WITH ordered AS (
-  SELECT
+select
     hall_id,
-    start_day,
-    end_day,
-    -- running maximum of end_day up to the previous row (per hall)
-    MAX(end_day) OVER (
-      PARTITION BY hall_id
-      ORDER BY start_day, end_day
-      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-    ) AS prev_max_end
-  FROM HallEvents
-),
-flagged AS (
-  SELECT
-    hall_id,
-    start_day,
-    end_day,
-    -- start a new group when this event starts AFTER the previous group's max end
-    CASE WHEN prev_max_end IS NULL OR start_day > prev_max_end THEN 1 ELSE 0 END AS is_new_group
-  FROM ordered
-),
-grps AS (
-  SELECT
-    hall_id,
-    start_day,
-    end_day,
-    -- cumulative sum of is_new_group gives a group id per hall
-    SUM(is_new_group) OVER (PARTITION BY hall_id ORDER BY start_day, end_day
-                            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS grp
-  FROM flagged
-)
-SELECT
-  hall_id,
-  MIN(start_day) AS start_day,
-  MAX(end_day)   AS end_day
-FROM grps
-GROUP BY hall_id, grp
-ORDER BY hall_id, start_day;
-
-
+    min(start_day) as start_day,
+    max(end_day) as end_day
+from (
+    select 
+        *,
+        sum(case when prev_start is null or start_day > prev_end then 1 else 0 end) over(partition by hall_id order by start_day) as grp
+    from (
+            select
+                *,
+                lag(start_day) over(partition by hall_id order by start_day) prev_start,
+                max(end_day) over(partition by hall_id order by start_day rows between unbounded preceding and 1 preceding) prev_end
+            from  HallEvents
+        ) a
+        order by hall_id, start_day
+) b
+group by hall_id, grp
