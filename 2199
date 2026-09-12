@@ -64,12 +64,29 @@ post_id	topic_id
 2	2
 3	NULL
 
-Solution
+Solution 1(mysql)
 ==========
-SELECT
-  p.post_id,
-  k.topic_id
+SELECT p.post_id,
+       COALESCE(
+           GROUP_CONCAT(DISTINCT k.topic_id ORDER BY k.topic_id SEPARATOR ','),
+           'Ambiguous!'
+       ) AS topic
 FROM Posts p
 LEFT JOIN Keywords k
-  ON LOWER(p.content) LIKE CONCAT('%', LOWER(k.word), '%')
-ORDER BY p.post_id;
+       ON CONCAT(' ', LOWER(p.content), ' ') LIKE CONCAT('% ', LOWER(k.word), ' %')
+GROUP BY p.post_id;
+
+Solution 2(postresql)
+--------------------
+WITH m AS (
+    SELECT DISTINCT p.post_id, k.topic_id
+    FROM Posts p
+    JOIN Keywords k
+      ON LOWER(k.word) = ANY (STRING_TO_ARRAY(LOWER(p.content), ' '))
+)
+SELECT p.post_id,
+       COALESCE(STRING_AGG(m.topic_id::text, ',' ORDER BY m.topic_id),
+                'Ambiguous!') AS topic
+FROM Posts p
+LEFT JOIN m ON m.post_id = p.post_id
+GROUP BY p.post_id;
