@@ -1,71 +1,106 @@
 2362. Generate the Invoice
-2362. Generate the Invoice
+Solved
+Hard
+Topics
+SQL Schema
+Pandas Schema
 Table: Products
-Column Name	Type
-product_id	int
-price	int
 
-product_id is the primary key of this table.
-
-Each row contains information about a product and its price.
++-------------+------+
+| Column Name | Type |
++-------------+------+
+| product_id  | int  |
+| price       | int  |
++-------------+------+
+product_id contains unique values.
+Each row in this table shows the ID of a product and the price of one unit.
+ 
 
 Table: Purchases
-Column Name	Type
-invoice_id	int
-product_id	int
-quantity	int
 
-There is no primary key for this table.
++-------------+------+
+| Column Name | Type |
++-------------+------+
+| invoice_id  | int  |
+| product_id  | int  |
+| quantity    | int  |
++-------------+------+
+(invoice_id, product_id) is the primary key (combination of columns with unique values) for this table.
+Each row in this table shows the quantity ordered from one product in an invoice. 
+ 
 
-Each row represents that a given product_id was purchased in quantity on invoice_id.
+Write a solution to show the details of the invoice with the highest price. If two or more invoices have the same price, return the details of the one with the smallest invoice_id.
 
-Task
+Return the result table in any order.
 
-Write an SQL query to generate the invoice.
+The result format is shown in the following example.
 
-For each invoice_id, report:
+ 
 
-invoice_id
+Example 1:
 
-total_price — sum of (quantity × price) of all products in the invoice
+Input: 
+Products table:
++------------+-------+
+| product_id | price |
++------------+-------+
+| 1          | 100   |
+| 2          | 200   |
++------------+-------+
+Purchases table:
++------------+------------+----------+
+| invoice_id | product_id | quantity |
++------------+------------+----------+
+| 1          | 1          | 2        |
+| 3          | 2          | 1        |
+| 2          | 2          | 3        |
+| 2          | 1          | 4        |
+| 4          | 1          | 10       |
++------------+------------+----------+
+Output: 
++------------+----------+-------+
+| product_id | quantity | price |
++------------+----------+-------+
+| 2          | 3        | 600   |
+| 1          | 4        | 400   |
++------------+----------+-------+
+Explanation: 
+Invoice 1: price = (2 * 100) = $200
+Invoice 2: price = (4 * 100) + (3 * 200) = $1000
+Invoice 3: price = (1 * 200) = $200
+Invoice 4: price = (10 * 100) = $1000
 
-Ordering
-
-Return the result table ordered by:
-
-total_price in descending order
-
-invoice_id in ascending order
-
-Example
-Input
-
-Products
-
-product_id	price
-1	10
-2	20
-3	30
-
-Purchases
-
-invoice_id	product_id	quantity
-1	1	2
-1	2	3
-2	3	1
-2	1	4
-Output
-invoice_id	total_price
-2	70
-1	80
+The highest price is $1000, and the invoices with the highest prices are 2 and 4. We return the details of the one with the smallest ID, which is invoice 2.
 
 Solution
 ==========
-SELECT
-  pu.invoice_id,
-  SUM(pu.quantity * pr.price) AS total_price
-FROM Purchases pu
-JOIN Products pr
-  ON pu.product_id = pr.product_id
-GROUP BY pu.invoice_id
-ORDER BY total_price DESC, pu.invoice_id ASC;
+with cte as(
+    select 
+        *
+    from
+    (
+        select
+            product_id,
+            quantity,
+            sum,
+            invoice_id,
+            prd_sum,
+            rank() over (order by sum desc) as rn
+        from(
+            select
+                a.product_id,
+                a.quantity,
+                invoice_id,
+                a.quantity * b.price as prd_sum,
+                sum(a.quantity * b.price) over(partition by invoice_id) as sum
+            from Purchases a
+            join Products b on a.product_id = b.product_id
+        )
+    ) where rn = 1
+)
+select
+    product_id,
+    quantity,
+    prd_sum as price
+from cte
+where invoice_id = (select min(invoice_id) from cte)
