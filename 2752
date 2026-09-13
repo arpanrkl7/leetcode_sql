@@ -84,3 +84,24 @@ SELECT b.customer_id
 FROM best b
 JOIN mx
   ON b.longest_streak = mx.max_streak;
+
+Solution 2
+============
+with cte as(
+    select
+        customer_id,
+        count(*) as count
+    from (
+        select
+            *,
+            transaction_date - (row_number() over(partition by customer_id order by transaction_date))::int as grp
+        from 
+            Transactions
+    )
+    group by customer_id, grp
+)
+select
+    customer_id as customer_id
+from cte
+where count = (select max(count) from cte)
+order by 1
