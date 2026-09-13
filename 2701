@@ -1,92 +1,81 @@
 2701. Consecutive Transactions with Increasing Amounts
+Solved
+Topics
+SQL Schema
+Pandas Schema
 Table: Transactions
-Column Name	Type
-transaction_id	int
-customer_id	int
-transaction_date	date
-amount	int
 
-transaction_id is the primary key of this table.
++------------------+------+
+| Column Name      | Type |
++------------------+------+
+| transaction_id   | int  |
+| customer_id      | int  |
+| transaction_date | date |
+| amount           | int  |
++------------------+------+
+transaction_id is the primary key of this table. 
+Each row contains information about transactions that includes unique (customer_id, transaction_date) along with the corresponding customer_id and amount.  
+Write an SQL query to find the customers who have made consecutive transactions with increasing amount for at least three consecutive days. Include the customer_id, start date of the consecutive transactions period and the end date of the consecutive transactions period. There can be multiple consecutive transactions by a customer.
 
-Each row represents a transaction made by a customer on a given date with a given amount.
+Return the result table ordered by customer_id, consecutive_start, consecutive_end in ascending order.
 
-For each customer, transaction_date values are unique.
+The query result format is in the following example.
 
-Definition
+ 
 
-A customer has consecutive transactions with increasing amounts if:
+Example 1:
 
-There exist at least three consecutive transactions (ordered by transaction_date)
-such that the amount strictly increases from one transaction to the next.
-
-Formally, for three transactions on dates d1 < d2 < d3:
-
-amount(d1) < amount(d2) < amount(d3)
-Task
-
-Write an SQL query to find the customer_id(s) who have at least one such sequence.
-
-Return the result table in any order.
-
-Example
-Input
-
-Transactions
-
-transaction_id	customer_id	transaction_date	amount
-1	1	2021-01-01	10
-2	1	2021-01-02	20
-3	1	2021-01-03	30
-4	2	2021-01-01	10
-5	2	2021-01-02	20
-6	2	2021-01-03	15
-7	3	2021-01-01	5
-8	3	2021-01-02	6
-9	3	2021-01-03	7
-10	3	2021-01-04	6
-Output
-customer_id
-1
-3
+Input: 
+Transactions table:
++----------------+-------------+------------------+--------+
+| transaction_id | customer_id | transaction_date | amount |
++----------------+-------------+------------------+--------+
+| 1              | 101         | 2023-05-01       | 100    |
+| 2              | 101         | 2023-05-02       | 150    |
+| 3              | 101         | 2023-05-03       | 200    |
+| 4              | 102         | 2023-05-01       | 50     |
+| 5              | 102         | 2023-05-03       | 100    |
+| 6              | 102         | 2023-05-04       | 200    |
+| 7              | 105         | 2023-05-01       | 100    |
+| 8              | 105         | 2023-05-02       | 150    |
+| 9              | 105         | 2023-05-03       | 200    |
+| 10             | 105         | 2023-05-04       | 300    |
+| 11             | 105         | 2023-05-12       | 250    |
+| 12             | 105         | 2023-05-13       | 260    |
+| 13             | 105         | 2023-05-14       | 270    |
++----------------+-------------+------------------+--------+
+Output: 
++-------------+-------------------+-----------------+
+| customer_id | consecutive_start | consecutive_end | 
++-------------+-------------------+-----------------+
+| 101         |  2023-05-01       | 2023-05-03      | 
+| 105         |  2023-05-01       | 2023-05-04      |
+| 105         |  2023-05-12       | 2023-05-14      | 
++-------------+-------------------+-----------------+
+Explanation: 
+- customer_id 101 has made consecutive transactions with increasing amounts from May 1st, 2023, to May 3rd, 2023
+- customer_id 102 does not have any consecutive transactions for at least 3 days. 
+- customer_id 105 has two sets of consecutive transactions: from May 1st, 2023, to May 4th, 2023, and from May 12th, 2023, to May 14th, 2023. 
+customer_id is sorted in ascending order.
 
 Solution 1
 =========
-SELECT DISTINCT customer_id
-FROM (
-  SELECT
+select
     customer_id,
-    amount,
-    LAG(amount, 1) OVER (PARTITION BY customer_id ORDER BY transaction_date) AS prev1,
-    LAG(amount, 2) OVER (PARTITION BY customer_id ORDER BY transaction_date) AS prev2
-  FROM Transactions
-) t
-WHERE prev2 IS NOT NULL
-  AND prev2 < prev1
-  AND prev1 < amount;
-
-  Solution 2
-  ==========
-  SELECT DISTINCT t1.customer_id
-FROM Transactions t1
-JOIN Transactions t2
-  ON t1.customer_id = t2.customer_id
- AND t1.transaction_date < t2.transaction_date
-JOIN Transactions t3
-  ON t2.customer_id = t3.customer_id
- AND t2.transaction_date < t3.transaction_date
-WHERE t1.amount < t2.amount
-  AND t2.amount < t3.amount
-  -- ensure no transaction exists between t1 and t2
-  AND NOT EXISTS (
-    SELECT 1 FROM Transactions x
-    WHERE x.customer_id = t1.customer_id
-      AND x.transaction_date > t1.transaction_date
-      AND x.transaction_date < t2.transaction_date
-  )
-  -- ensure no transaction exists between t2 and t3
-  AND NOT EXISTS (
-    SELECT 1 FROM Transactions y
-    WHERE y.customer_id = t2.customer_id
-      AND y.transaction_date > t2.transaction_date
-      AND y.transaction_date < t3.transaction_date
-  );
+    min(transaction_date) as consecutive_start,
+    max(transaction_date) as consecutive_end
+from (
+    select
+        *,
+        sum(case when prev_amt is null or prev_amt >= amount then 1 else 0 end) over (partition by customer_id order by transaction_date) as grp2
+    from (
+        select
+            *,
+            transaction_date - (row_number() over(partition by customer_id order by transaction_date))::int as grp1,
+            lag(amount) over(partition by customer_id order by transaction_date) as prev_amt
+        from Transactions
+    )
+)
+group by customer_id, grp1, grp2
+having count(*) >= 3
+order by 1,2,3
