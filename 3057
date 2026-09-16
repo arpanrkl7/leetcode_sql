@@ -60,6 +60,26 @@ employee_id	project_id	employee_name	project_workload
 4	2	Doe	68
 
 Solution 1
+==========
+select
+    employee_id,
+    project_id,
+    employee_name,
+    project_workload
+from (
+    select
+        p.employee_id,
+        project_id,
+        name as employee_name,
+        workload as project_workload,
+        avg(workload) over(partition by team) as avg_load
+    from Project p 
+    join Employees e on p.employee_id = e.employee_id
+)
+where project_workload > avg_load
+order by 1,2
+
+Solution 2
 ===========
 WITH team_avg AS (
     SELECT
@@ -83,7 +103,7 @@ JOIN team_avg t
 WHERE p.workload > t.avg_workload
 ORDER BY p.employee_id, p.project_id;
 
-Solution 2
+Solution 3
 ===========
 SELECT
     p.employee_id,
@@ -96,7 +116,7 @@ JOIN Employees e
 WHERE p.workload > AVG(p.workload) OVER (PARTITION BY e.team)
 ORDER BY p.employee_id, p.project_id;
 
-Solution 3
+Solution 4
 ===========
 SELECT
     p.employee_id,
